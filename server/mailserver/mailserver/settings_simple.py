@@ -9,7 +9,7 @@ from .settings import *
 DEBUG = False
 
 # Set allowed hosts (change this to your actual domain)
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'yourdomain.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'yourdomain.com', 'healthcheck.railway.app']
 
 # Basic security (keep it simple)
 SECURE_SSL_REDIRECT = False  # Set to True only after SSL is set up
