@@ -1,0 +1,12 @@
+# Core Django
+Django>=5.2.5
+djangorestframework>=3.14.0
+
+# Simple production server
+gunicorn>=21.2.0
+
+# CORS (already in your settings)
+django-cors-headers>=4.3.1
+
+# Environment variables
+python-dotenv>=1.0.0 
