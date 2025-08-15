@@ -6,7 +6,7 @@
   "deploy": {
     "startCommand": "cd server/mailserver && gunicorn --bind 0.0.0.0:$PORT mailserver.wsgi_simple:application",
     "healthcheckPath": "/admin/",
-    "healthcheckTimeout": 300,
+    "healthcheckTimeout": 600,
     "restartPolicyType": "ON_FAILURE",
     "workingDirectory": "mailserver"
   }
