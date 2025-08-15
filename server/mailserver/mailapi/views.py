@@ -4,6 +4,12 @@ from rest_framework import status
 from django.core.mail import EmailMessage, get_connection
 
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from django.core.mail import EmailMessage, get_connection
+
+
 @api_view(['POST'])
 def send_mail_to_list(request):
     data = request.data
@@ -42,7 +48,9 @@ def send_mail_to_list(request):
         )
 
     except Exception as e:
+        import traceback
+        error_message = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
         return Response(
-            {"error": str(e)},
+            {"error": error_message},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
