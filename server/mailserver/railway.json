@@ -8,6 +8,6 @@
     "healthcheckPath": "/admin/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
-    "workingDirectory": "server/mailserver"
+    "workingDirectory": "mailserver"
   }
 } 
