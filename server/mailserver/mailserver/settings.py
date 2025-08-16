@@ -159,6 +159,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://pulsemail-xee8.vercel.app",
+    "https://pulsemail.vercel.app/"
 ]
 CORS_ALLOW_CREDENTIALS = True
 
