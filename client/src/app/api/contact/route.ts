@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
               In the meantime, feel free to explore our platform and see how PulseMail can help you with bulk email sending.
             </p>
             <div style="text-align: center; margin-top: 30px;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://yourapp.com'}/auth" 
+              <a href='https://pulsemail-xee8.vercel.app/auth' 
                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 Get Started with PulseMail
               </a>
