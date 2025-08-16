@@ -156,7 +156,10 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://pulsemail-xee8.vercel.app",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # Trusted origins for CSRF
