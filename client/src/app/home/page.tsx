@@ -37,16 +37,6 @@ export default function Page() {
     return rows.map((r) => (r[selectedCol] ?? "").toString().trim()).filter(Boolean);
   }, [rows, selectedCol]);
 
-    const subjectList = useMemo(() => {
-    if (!selectedCol) return [];
-    return rows.map((r) => (r[selectedCol] ?? "").toString().trim()).filter(Boolean);
-  }, [rows, selectedCol]);
-
-    const msgList = useMemo(() => {
-    if (!selectedCol) return [];
-    return rows.map((r) => (r[selectedCol] ?? "").toString().trim()).filter(Boolean);
-  }, [rows, selectedCol]);
-
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
@@ -122,8 +112,8 @@ export default function Page() {
           email_list: emailList,
           HOST_EMAIL: selectedConnection.host_email,
           HOST_APP_PASSWORD: selectedConnection.host_app_password,
-          subject,
-          message,
+          subject: subject,
+          message: message,
         },
         { timeoutMs: 20000 }
       );
