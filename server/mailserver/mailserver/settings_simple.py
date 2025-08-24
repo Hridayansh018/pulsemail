@@ -1,3 +1,4 @@
+#mailserver>mailserver/settings_simple.py
 """
 Simple production settings - minimal changes to fix critical errors
 """
@@ -9,7 +10,7 @@ from .settings import *
 DEBUG = False
 
 # Set allowed hosts (change this to your actual domain)
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'pulsemail-production.up.railway.app', 'https://pulsemail-xee8.vercel.app', 'healthcheck.railway.app']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'pulsemail-production.up.railway.app', 'pulsemail-xee8.vercel.app', 'healthcheck.railway.app']
 
 # Basic security (keep it simple)
 SECURE_SSL_REDIRECT = False  # Set to True only after SSL is set up

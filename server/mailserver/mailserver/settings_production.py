@@ -1,3 +1,4 @@
+#mailserver>mailserver/settings_production.py
 """
 Production settings for mailserver project.
 """
@@ -13,7 +14,7 @@ DEBUG = False
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-secret-key-here')
 
 # Production hosts
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1','pulsemail-production.up.railway.app', 'pulsemail-xee8.vercel.app', 'healthcheck.railway.app').split(',')
 
 # Security settings
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
@@ -130,11 +131,11 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000','pulsemail-production.up.railway.app', 'pulsemail-xee8.vercel.app', 'healthcheck.railway.app').split(',')
 CORS_ALLOW_CREDENTIALS = True
 
 # Trusted origins for CSRF
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000','pulsemail-production.up.railway.app', 'pulsemail-xee8.vercel.app', 'healthcheck.railway.app').split(',')
 
 # Security middleware
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
