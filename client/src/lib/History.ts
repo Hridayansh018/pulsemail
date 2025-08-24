@@ -24,8 +24,8 @@ export async function logCampaign(input: {
   connection_name: string;
   campaign_name: string;
   email_list: string[];
-  subject: string;
-  message: string;
+  subject?: string[];
+  message?: string[];
 }): Promise<CampaignRow> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated.");

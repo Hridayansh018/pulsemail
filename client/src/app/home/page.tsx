@@ -17,8 +17,8 @@ type CampaignPayload = {
   email_list: string[];
   HOST_EMAIL: string;
   HOST_APP_PASSWORD: string;
-  subject: string;
-  message: string;
+  subject?: string[];
+  message?: string[];
 };
 
 type SendOptions = {
@@ -30,6 +30,8 @@ export default function Page() {
   const [rows, setRows] = useState<Row[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [selectedCol, setSelectedCol] = useState<string>("");
+  const [selectedSubjectCol, setSelectedSubjectCol] = useState<string>("");
+  const [selectedMessageCol, setSelectedMessageCol] = useState<string>("");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const emailList = useMemo(() => {
@@ -37,6 +39,7 @@ export default function Page() {
     return rows.map((r) => (r[selectedCol] ?? "").toString().trim()).filter(Boolean);
   }, [rows, selectedCol]);
 
+  // State for subject and message form inputs
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
@@ -106,28 +109,56 @@ export default function Page() {
       // Show loading toast
       const loadingToast = toast.loading("Sending emails...");
 
-      const result = await sendCampaign(
-        url,
-        {
-          email_list: emailList,
-          HOST_EMAIL: selectedConnection.host_email,
-          HOST_APP_PASSWORD: selectedConnection.host_app_password,
-          subject: subject,
-          message: message,
-        },
-        { timeoutMs: 20000 }
-      );
+      // Create subject and message arrays based on column selection or input fields
+      let subjectArray: string[] | undefined;
+      let messageArray: string[] | undefined;
+
+      // Handle subject: use column data if selected, otherwise use input field
+      if (selectedSubjectCol && selectedSubjectCol.trim()) {
+        // Use CSV column data - map each email to its corresponding subject
+        subjectArray = rows
+          .filter((r) => (r[selectedCol] ?? "").toString().trim()) // Only include rows with valid emails
+          .map((r) => (r[selectedSubjectCol] ?? "").toString().trim() || "No Subject");
+      } else if (subject.trim()) {
+        // Use input field - same subject for all emails
+        subjectArray = emailList.map(() => subject);
+      }
+
+      // Handle message: use column data if selected, otherwise use input field
+      if (selectedMessageCol && selectedMessageCol.trim()) {
+        // Use CSV column data - map each email to its corresponding message
+        messageArray = rows
+          .filter((r) => (r[selectedCol] ?? "").toString().trim()) // Only include rows with valid emails
+          .map((r) => (r[selectedMessageCol] ?? "").toString().trim() || "No Message");
+      } else if (message.trim()) {
+        // Use input field - same message for all emails
+        messageArray = emailList.map(() => message);
+      }
+
+      const payload: CampaignPayload = {
+        email_list: emailList,
+        HOST_EMAIL: selectedConnection.host_email,
+        HOST_APP_PASSWORD: selectedConnection.host_app_password,
+      };
+
+      if (subjectArray) payload.subject = subjectArray;
+      if (messageArray) payload.message = messageArray;
+
+      const result = await sendCampaign(url, payload, { timeoutMs: 20000 });
 
       // Log the campaign to database (don't block UI if this fails)
       try {
-        await logCampaign({
+        const logPayload: Parameters<typeof logCampaign>[0] = {
           connection_id: selectedConnection.id,
           connection_name: selectedConnection.connection_name,
           campaign_name: campaignName || `Campaign ${new Date().toLocaleString()}`,
           email_list: emailList,
-          subject,
-          message,
-        });
+        };
+
+        if (subjectArray) logPayload.subject = subjectArray;
+        if (messageArray) logPayload.message = messageArray;
+
+        await logCampaign(logPayload);
       } catch (logErr: any) {
         console.error("Failed to log campaign:", logErr?.message || logErr);
         toast.error("Campaign sent but failed to save to history.");
@@ -146,6 +177,8 @@ export default function Page() {
       setHeaders([]);
       setRows([]);
       setSelectedCol("");
+      setSelectedSubjectCol("");
+      setSelectedMessageCol("");
 
       // Clear file input
       if (fileRef.current) {
@@ -227,30 +260,88 @@ export default function Page() {
           </label>
 
           {headers.length > 0 && (
-            <div className="mb-4">
-              <label className="mb-1 block text-sm text-white/80">Select email column</label>
-              <SelectShell>
-                <select
-                  value={selectedCol ?? ""}
-                  onChange={(e) => setSelectedCol(e.target.value)}
-                  className="
-                    w-full appearance-none bg-transparent
-                    px-3 pr-9 py-2
-                    text-white placeholder:text-white/60
-                    outline-none
-                  "
-                >
-                  {headers.map((h) => {
-                    const val = String(h);
-                    return (
-                      <option className="bg-[#0b0f19]" key={val} value={val}>
-                        {val}
-                      </option>
-                    );
-                  })}
-                </select>
-              </SelectShell>
-              <p className="mt-2 text-xs text-white/60">Selected list size: {emailList.length}</p>
+            <div className="mb-4 space-y-4">
+              <div>
+                <label className="mb-1 block text-sm text-white/80">Select email column</label>
+                <SelectShell>
+                  <select
+                    value={selectedCol ?? ""}
+                    onChange={(e) => setSelectedCol(e.target.value)}
+                    className="
+                      w-full appearance-none bg-transparent
+                      px-3 pr-9 py-2
+                      text-white placeholder:text-white/60
+                      outline-none
+                    "
+                  >
+                    {headers.map((h) => {
+                      const val = String(h);
+                      return (
+                        <option className="bg-[#0b0f19]" key={val} value={val}>
+                          {val}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </SelectShell>
+                <p className="mt-2 text-xs text-white/60">Selected list size: {emailList.length}</p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-white/80">Select subject column (optional)</label>
+                <SelectShell>
+                  <select
+                    value={selectedSubjectCol ?? ""}
+                    onChange={(e) => setSelectedSubjectCol(e.target.value)}
+                    className="
+                      w-full appearance-none bg-transparent
+                      px-3 pr-9 py-2
+                      text-white placeholder:text-white/60
+                      outline-none
+                    "
+                  >
+                    <option className="bg-[#0b0f19]" value="">
+                      None (use input field)
+                    </option>
+                    {headers.map((h) => {
+                      const val = String(h);
+                      return (
+                        <option className="bg-[#0b0f19]" key={val} value={val}>
+                          {val}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </SelectShell>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-white/80">Select message column (optional)</label>
+                <SelectShell>
+                  <select
+                    value={selectedMessageCol ?? ""}
+                    onChange={(e) => setSelectedMessageCol(e.target.value)}
+                    className="
+                      w-full appearance-none bg-transparent
+                      px-3 pr-9 py-2
+                      text-white placeholder:text-white/60
+                      outline-none
+                    "
+                  >
+                    <option className="bg-[#0b0f19]" value="">
+                      None (use input field)
+                    </option>
+                    {headers.map((h) => {
+                      const val = String(h);
+                      return (
+                        <option className="bg-[#0b0f19]" key={val} value={val}>
+                          {val}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </SelectShell>
+              </div>
             </div>
           )}
 
@@ -365,9 +456,7 @@ export default function Page() {
               disabled={
                 campaignPending || 
                 !selectedConnection || 
-                emailList.length === 0 || 
-                !subject.trim() || 
-                !message.trim()
+                emailList.length === 0
               }
               className="w-full rounded-lg cursor-pointer bg-blue-600/90 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-white/20"
             >
@@ -504,8 +593,13 @@ async function sendCampaign(url: string, payload: CampaignPayload, opts: SendOpt
   if (!Array.isArray(payload.email_list) || payload.email_list.length === 0) {
     throw new Error("email_list must be a non-empty array.");
   }
-  if (!payload.subject?.trim()) throw new Error("subject is required.");
-  if (!payload.message?.trim()) throw new Error("message is required.");
+  // Check that if subject/message arrays are provided, they have the correct length
+  if (payload.subject && (!Array.isArray(payload.subject) || payload.subject.length !== payload.email_list.length)) {
+    throw new Error("subject array must have the same length as email_list.");
+  }
+  if (payload.message && (!Array.isArray(payload.message) || payload.message.length !== payload.email_list.length)) {
+    throw new Error("message array must have the same length as email_list.");
+  }
 
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
