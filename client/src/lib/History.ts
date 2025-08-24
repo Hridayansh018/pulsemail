@@ -8,8 +8,8 @@ export type CampaignRow = {
   connection_name: string;
   campaign_name: string;
   email_list: string[];
-  subject: string;
-  message: string;
+  subject: string[];
+  message: string[];
   created_at: string;
 };
 
