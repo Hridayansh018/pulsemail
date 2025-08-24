@@ -17,8 +17,8 @@ type CampaignPayload = {
   email_list: string[];
   HOST_EMAIL: string;
   HOST_APP_PASSWORD: string;
-  subject: string | string[];
-  message: string | string[];
+  subject: string;
+  message: string;
 };
 
 type SendOptions = {
@@ -29,38 +29,26 @@ type SendOptions = {
 export default function Page() {
   const [rows, setRows] = useState<Row[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
-
-  // Column selections for mapping
-  const [selectedEmailCol, setSelectedEmailCol] = useState<string>("");
-  const [selectedSubjectCol, setSelectedSubjectCol] = useState<string>(""); // optional
-  const [selectedMessageCol, setSelectedMessageCol] = useState<string>(""); // optional
-
+  const [selectedCol, setSelectedCol] = useState<string>("");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  // Manual subject/message fallbacks
+  const emailList = useMemo(() => {
+    if (!selectedCol) return [];
+    return rows.map((r) => (r[selectedCol] ?? "").toString().trim()).filter(Boolean);
+  }, [rows, selectedCol]);
+
+    const subjectList = useMemo(() => {
+    if (!selectedCol) return [];
+    return rows.map((r) => (r[selectedCol] ?? "").toString().trim()).filter(Boolean);
+  }, [rows, selectedCol]);
+
+    const msgList = useMemo(() => {
+    if (!selectedCol) return [];
+    return rows.map((r) => (r[selectedCol] ?? "").toString().trim()).filter(Boolean);
+  }, [rows, selectedCol]);
+
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-
-  // Derive selected rows based on valid email presence to keep alignment
-  const selectedRows = useMemo(() => {
-    if (!selectedEmailCol) return [] as Row[];
-    return rows.filter((r) => (r[selectedEmailCol] ?? "").toString().trim() !== "");
-  }, [rows, selectedEmailCol]);
-
-  const emailList = useMemo(() => {
-    if (!selectedEmailCol) return [] as string[];
-    return selectedRows.map((r) => (r[selectedEmailCol] ?? "").toString().trim());
-  }, [selectedRows, selectedEmailCol]);
-
-  const subjectList = useMemo(() => {
-    if (!selectedSubjectCol) return [] as string[]; // use manual subject
-    return selectedRows.map((r) => (r[selectedSubjectCol] ?? "").toString());
-  }, [selectedRows, selectedSubjectCol]);
-
-  const msgList = useMemo(() => {
-    if (!selectedMessageCol) return [] as string[]; // use manual message
-    return selectedRows.map((r) => (r[selectedMessageCol] ?? "").toString());
-  }, [selectedRows, selectedMessageCol]);
 
   // Connections state
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -102,16 +90,7 @@ export default function Page() {
       const parsed = parseCSV(text);
       setHeaders(parsed.headers);
       setRows(parsed.rows);
-
-      // Heuristic defaults
-      const lower = parsed.headers.map((h) => h.toLowerCase());
-      const emailIdx = lower.findIndex((h) => /email/.test(h));
-      const subjectIdx = lower.findIndex((h) => /subject/.test(h));
-      const messageIdx = lower.findIndex((h) => /message|body|content/.test(h));
-
-      setSelectedEmailCol(parsed.headers[emailIdx >= 0 ? emailIdx : 0] ?? "");
-      setSelectedSubjectCol(parsed.headers[subjectIdx >= 0 ? subjectIdx : 0] ?? "");
-      setSelectedMessageCol(parsed.headers[messageIdx >= 0 ? messageIdx : 0] ?? "");
+      setSelectedCol(parsed.headers[0] ? String(parsed.headers[0]) : ""); // Fixed
       
       toast.success(`CSV uploaded successfully! Found ${parsed.rows.length} rows.`);
     } catch (error: any) {
@@ -129,28 +108,6 @@ export default function Page() {
       return;
     }
 
-    // Determine payload subject/message: either arrays from columns or manual strings
-    const payloadSubject: string | string[] = subjectList.length > 0 ? subjectList : subject;
-    const payloadMessage: string | string[] = msgList.length > 0 ? msgList : message;
-
-    // Client-side validation mirroring server constraints
-    if (Array.isArray(payloadSubject) && payloadSubject.length !== emailList.length) {
-      toast.error("Subject column rows must match number of recipients.");
-      return;
-    }
-    if (Array.isArray(payloadMessage) && payloadMessage.length !== emailList.length) {
-      toast.error("Message column rows must match number of recipients.");
-      return;
-    }
-    if (!Array.isArray(payloadSubject) && !payloadSubject.trim()) {
-      toast.error("Subject is required.");
-      return;
-    }
-    if (!Array.isArray(payloadMessage) && !payloadMessage.trim()) {
-      toast.error("Message is required.");
-      return;
-    }
-
     const url = "https://pulsemail-production.up.railway.app/api/send-mails/";
 
     try {
@@ -165,8 +122,8 @@ export default function Page() {
           email_list: emailList,
           HOST_EMAIL: selectedConnection.host_email,
           HOST_APP_PASSWORD: selectedConnection.host_app_password,
-          subject: payloadSubject,
-          message: payloadMessage,
+          subject,
+          message,
         },
         { timeoutMs: 20000 }
       );
@@ -178,8 +135,8 @@ export default function Page() {
           connection_name: selectedConnection.connection_name,
           campaign_name: campaignName || `Campaign ${new Date().toLocaleString()}`,
           email_list: emailList,
-          subject: Array.isArray(payloadSubject) ? '(personalized)' : payloadSubject,
-          message: Array.isArray(payloadMessage) ? '(personalized)' : payloadMessage,
+          subject,
+          message,
         });
       } catch (logErr: any) {
         console.error("Failed to log campaign:", logErr?.message || logErr);
@@ -198,9 +155,7 @@ export default function Page() {
       setCampaignName('');
       setHeaders([]);
       setRows([]);
-      setSelectedEmailCol("");
-      setSelectedSubjectCol("");
-      setSelectedMessageCol("");
+      setSelectedCol("");
 
       // Clear file input
       if (fileRef.current) {
@@ -245,9 +200,6 @@ export default function Page() {
     }
   }
 
-  const usingPersonalizedSubject = selectedSubjectCol !== "";
-  const usingPersonalizedMessage = selectedMessageCol !== "";
-
   return (
 
     <AuthGuard>
@@ -266,7 +218,7 @@ export default function Page() {
         <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
           <h2 className="text-lg font-semibold text-white">Upload CSV</h2>
           <p className="mb-3 text-sm text-white/70">
-            Upload a CSV with headers. Map the columns for email, subject (optional), and message (optional).
+            Upload a CSV with headers. After upload, pick the column that contains emails.
           </p>
 
           <label className="mb-4 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white hover:bg-white/15">
@@ -285,80 +237,30 @@ export default function Page() {
           </label>
 
           {headers.length > 0 && (
-            <div className="mb-4 space-y-3">
-              <div>
-                <label className="mb-1 block text-sm text-white/80">Select email column</label>
-                <SelectShell>
-                  <select
-                    value={selectedEmailCol}
-                    onChange={(e) => setSelectedEmailCol(e.target.value)}
-                    className="
-                      w-full appearance-none bg-transparent
-                      px-3 pr-9 py-2
-                      text-white placeholder:text-white/60
-                      outline-none
-                    "
-                  >
-                    {headers.map((h) => {
-                      const val = String(h);
-                      return (
-                        <option className="bg-[#0b0f19]" key={val} value={val}>
-                          {val}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </SelectShell>
-                <p className="mt-2 text-xs text-white/60">Selected list size: {emailList.length}</p>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm text-white/80">Select subject column (optional)</label>
-                <SelectShell>
-                  <select
-                    value={selectedSubjectCol}
-                    onChange={(e) => setSelectedSubjectCol(e.target.value)}
-                    className="
-                      w-full appearance-none bg-transparent
-                      px-3 pr-9 py-2
-                      text-white placeholder:text-white/60
-                      outline-none
-                    "
-                  >
-                    <option className="bg-[#0b0f19]" value="">Manual subject</option>
-                    {headers.map((h) => (
-                      <option className="bg-[#0b0f19]" key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                </SelectShell>
-                {usingPersonalizedSubject && (
-                  <p className="mt-2 text-xs text-white/60">Using personalized subject from column: <span className="text-white/90">{selectedSubjectCol}</span></p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm text-white/80">Select message column (optional)</label>
-                <SelectShell>
-                  <select
-                    value={selectedMessageCol}
-                    onChange={(e) => setSelectedMessageCol(e.target.value)}
-                    className="
-                      w-full appearance-none bg-transparent
-                      px-3 pr-9 py-2
-                      text-white placeholder:text-white/60
-                      outline-none
-                    "
-                  >
-                    <option className="bg-[#0b0f19]" value="">Manual message</option>
-                    {headers.map((h) => (
-                      <option className="bg-[#0b0f19]" key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                </SelectShell>
-                {usingPersonalizedMessage && (
-                  <p className="mt-2 text-xs text-white/60">Using personalized message from column: <span className="text-white/90">{selectedMessageCol}</span></p>
-                )}
-              </div>
+            <div className="mb-4">
+              <label className="mb-1 block text-sm text-white/80">Select email column</label>
+              <SelectShell>
+                <select
+                  value={selectedCol ?? ""}
+                  onChange={(e) => setSelectedCol(e.target.value)}
+                  className="
+                    w-full appearance-none bg-transparent
+                    px-3 pr-9 py-2
+                    text-white placeholder:text-white/60
+                    outline-none
+                  "
+                >
+                  {headers.map((h) => {
+                    const val = String(h);
+                    return (
+                      <option className="bg-[#0b0f19]" key={val} value={val}>
+                        {val}
+                      </option>
+                    );
+                  })}
+                </select>
+              </SelectShell>
+              <p className="mt-2 text-xs text-white/60">Selected list size: {emailList.length}</p>
             </div>
           )}
 
@@ -388,14 +290,14 @@ export default function Page() {
               </table>
             </div>
           ) : (
-            <EmptyState />)
-          }
+            <EmptyState />
+          )}
         </div>
 
         {/* RIGHT: Campaign + Connection */}
         <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
           <h2 className="text-lg font-semibold text-white">Create Campaign</h2>
-          <p className="mb-4 text-sm text-white/70">Compose the email to send to the selected list. Use CSV columns for per-recipient subject/message, or enter a manual subject/message below.</p>
+          <p className="mb-4 text-sm text-white/70">Compose the email to send to the selected list.</p>
 
           {/* Campaign Name */}
           <div className="mb-4">
@@ -448,32 +350,24 @@ export default function Page() {
           {/* Subject / Message */}
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm text-white/80">Subject {usingPersonalizedSubject && <span className="text-xs text-white/60">(from column)</span>}</label>
+              <label className="mb-1 block text-sm text-white/80">Subject</label>
               <input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder={usingPersonalizedSubject ? "Subject column selected; manual input disabled" : "Your subject"}
-                disabled={usingPersonalizedSubject}
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none disabled:opacity-60"
+                placeholder="Your subject"
+                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
               />
-              {usingPersonalizedSubject && (
-                <p className="mt-1 text-xs text-white/60">Personalized subjects will be used for {emailList.length} recipients.</p>
-              )}
             </div>
 
             <div>
-              <label className="mb-1 block text-sm text-white/80">Message {usingPersonalizedMessage && <span className="text-xs text-white/60">(from column)</span>}</label>
+              <label className="mb-1 block text-sm text-white/80">Message</label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={usingPersonalizedMessage ? "Message column selected; manual input disabled" : "Write your message..."}
+                placeholder="Write your message..."
                 rows={10}
-                disabled={usingPersonalizedMessage}
-                className="w-full resize-y rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none disabled:opacity-60"
+                className="w-full resize-y rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
               />
-              {usingPersonalizedMessage && (
-                <p className="mt-1 text-xs text-white/60">Personalized messages will be used for {emailList.length} recipients.</p>
-              )}
             </div>
 
             <button
@@ -482,11 +376,8 @@ export default function Page() {
                 campaignPending || 
                 !selectedConnection || 
                 emailList.length === 0 || 
-                (
-                  !usingPersonalizedSubject && !subject.trim()
-                ) || (
-                  !usingPersonalizedMessage && !message.trim()
-                )
+                !subject.trim() || 
+                !message.trim()
               }
               className="w-full rounded-lg cursor-pointer bg-blue-600/90 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-white/20"
             >
@@ -501,24 +392,18 @@ export default function Page() {
             </button>
 
             {/* Preview */}
-            <div className="text-xs text-white/70 space-y-1">
+            <div className="text-xs text-white/70">
               {emailList.length > 0 ? (
                 <div>
-                  <div>
-                    Sending to {emailList.length} recipients. Using connection: {" "}
-                    <span className="text-white/90">
-                      {selectedConnection ? selectedConnection.connection_name : "N/A"}
-                    </span>
-                  </div>
-                  <div>
-                    Emails example: <span className="text-white/90">{emailList.slice(0, 5).join(", ")}{emailList.length > 5 ? "…" : ""}</span>
-                  </div>
-                  <div>
-                    Subject: <span className="text-white/90">{usingPersonalizedSubject ? `from column "${selectedSubjectCol}"` : (subject ? subject.slice(0, 50) : "(none)")}</span>
-                  </div>
-                  <div>
-                    Message: <span className="text-white/90">{usingPersonalizedMessage ? `from column "${selectedMessageCol}"` : (message ? message.slice(0, 50) : "(none)")}</span>
-                  </div>
+                  Sending to {emailList.length} recipients. Using connection:{" "}
+                  <span className="text-white/90">
+                    {selectedConnection ? selectedConnection.connection_name : "N/A"}
+                  </span>
+                  . Example:{" "}
+                  <span className="text-white/90">
+                    {emailList.slice(0, 5).join(", ")}
+                    {emailList.length > 5 ? "…" : ""}
+                  </span>
                 </div>
               ) : (
                 <span>No recipients selected yet.</span>
@@ -629,24 +514,8 @@ async function sendCampaign(url: string, payload: CampaignPayload, opts: SendOpt
   if (!Array.isArray(payload.email_list) || payload.email_list.length === 0) {
     throw new Error("email_list must be a non-empty array.");
   }
-
-  // Validate subject
-  if (Array.isArray(payload.subject)) {
-    if (payload.subject.length !== payload.email_list.length) {
-      throw new Error("subject array length must match email_list length");
-    }
-  } else {
-    if (!payload.subject?.trim()) throw new Error("subject is required.");
-  }
-
-  // Validate message
-  if (Array.isArray(payload.message)) {
-    if (payload.message.length !== payload.email_list.length) {
-      throw new Error("message array length must match email_list length");
-    }
-  } else {
-    if (!payload.message?.trim()) throw new Error("message is required.");
-  }
+  if (!payload.subject?.trim()) throw new Error("subject is required.");
+  if (!payload.message?.trim()) throw new Error("message is required.");
 
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
@@ -757,7 +626,7 @@ function EmptyState() {
   return (
     <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-6 text-center">
       <p className="text-sm text-white/70">No file uploaded. Choose a CSV to preview data.</p>
-      <p className="mt-2 text-xs text-white/50">Example headers: email, name, company, subject, message</p>
+      <p className="mt-2 text-xs text-white/50">Example headers: email, name, company</p>
     </div>
   );
 }
