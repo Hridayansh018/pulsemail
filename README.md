@@ -373,7 +373,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## 📞 Support
 
-For support, email [your-email@example.com] or open an issue in the GitHub repository.
+For support, email [work.with.hridayansh@gmail.com] or open an issue in the GitHub repository.
 
 ---
 
