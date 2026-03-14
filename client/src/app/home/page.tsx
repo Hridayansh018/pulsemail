@@ -101,7 +101,7 @@ export default function Page() {
       return;
     }
 
-    const url = "https://pulsemail-production.up.railway.app/api/send-mails/";
+    const url = "https://pulsemail-0uhy.onrender.com/api/send-mails/";
 
     try {
       setCampaignPending(true);
