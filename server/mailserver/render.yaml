@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pulsemail-server
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn.conf.py mailserver.wsgi:application
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://pulsemail-xee8.vercel.app,https://pulsemail.vercel.app"
+      - key: PYTHON_VERSION
+        value: "3.11.0"

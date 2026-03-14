@@ -1,1 +1,1 @@
-web: cd server/mailserver && gunicorn --bind 0.0.0.0:$PORT mailserver.wsgi_simple:application 
+web: gunicorn -c gunicorn.conf.py mailserver.wsgi:application
