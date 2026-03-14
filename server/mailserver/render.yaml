@@ -2,6 +2,7 @@ services:
   - type: web
     name: pulsemail-server
     runtime: python
+    rootDir: server/mailserver
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -c gunicorn.conf.py mailserver.wsgi:application
     envVars:
