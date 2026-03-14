@@ -158,13 +158,13 @@ REST_FRAMEWORK = {
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://pulsemail-xee8.vercel.app",
-    "https://pulsemail.vercel.app"
+    "https://pulsemail.vercel.app",
+    "https://pulsemail-0uhy.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 # Trusted origins for CSRF
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://pulsemail-xee8.vercel.app,https://pulsemail.vercel.app,http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://pulsemail.vercel.app,http://localhost:3000').split(',')
 
 # Logging configuration
 LOGGING = {
