@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       subject: "Thank you for contacting PulseMail!",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">PulseMail</h1>
           </div>
           <div style="padding: 30px; background: #f8f9fa;">
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
             <p style="color: #666; line-height: 1.6; font-size: 16px;">
               Thank you for reaching out to us! We've received your message and our team will get back to you shortly.
             </p>
-            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #14b8a6;">
               <h3 style="color: #333; margin: 0 0 10px 0;">Your Message:</h3>
               <p style="color: #666; margin: 0; font-style: italic;">"${message}"</p>
             </div>
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
             </p>
             <div style="text-align: center; margin-top: 30px;">
               <a href='https://pulsemail-xee8.vercel.app/auth' 
-                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                 style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 Get Started with PulseMail
               </a>
             </div>
@@ -62,11 +62,11 @@ export async function POST(request: NextRequest) {
     const adminMailOptions = {
       from: process.env.ADMIN_HOST_EMAIL,
       to: process.env.ADMIN_EMAIL,
-      subject: "🔔 New Contact Form Submission - PulseMail",
+      subject: "New Contact Form Submission - PulseMail",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #dc2626; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">🔔 New Contact Request</h1>
+          <div style="background: #0f172a; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">New Contact Request</h1>
           </div>
           <div style="padding: 30px; background: #f8f9fa;">
             <h2 style="color: #333; margin-bottom: 20px;">Contact Details:</h2>

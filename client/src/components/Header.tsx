@@ -1,65 +1,72 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { MdMenu, MdClose } from "react-icons/md";
+
+const navLinks = [
+  { href: "#top", label: "Home" },
+  { href: "#features", label: "Features" },
+  { href: "#contact", label: "Contact" },
+];
 
 export default function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/50">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="text-2xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 bg-clip-text text-transparent">
-              PulseMail
-            </div>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="#about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-              About
-            </Link>
-            <Link href="#contact" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-              Contact
-            </Link>
-            <Link 
-              href="/auth" 
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
-            >
-              Get Started
-            </Link>
-          </div>
-
-          {/* Mobile menu button */}
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2"
+    <header className="fixed top-0 z-50 w-full border-b border-white/5 bg-surface/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-5 md:px-16">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="text-primary transition-opacity hover:opacity-80 md:hidden"
+            aria-label="Toggle menu"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            {open ? <MdClose className="h-6 w-6" /> : <MdMenu className="h-6 w-6" />}
           </button>
+          <Link href="#top" className="text-2xl font-bold tracking-tighter text-primary">
+            PulseMail
+          </Link>
         </div>
 
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <Link href="#about" className="block px-3 py-2 text-gray-700 hover:text-blue-600">
-                About
-              </Link>
-              <Link href="#contact" className="block px-3 py-2 text-gray-700 hover:text-blue-600">
-                Contact
-              </Link>
-              <Link href="/auth" className="block px-3 py-2 bg-blue-600 text-white rounded-lg">
-                Get Started
-              </Link>
-            </div>
-          </div>
-        )}
-      </nav>
+        <nav className="hidden gap-8 md:flex">
+          {navLinks.map(({ href, label }) => (
+            <a
+              key={label}
+              href={href}
+              className="mono-label text-on-surface-variant transition-colors hover:text-primary"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="hidden items-center gap-4 md:flex">
+          <Link href="/auth" className="btn-primary rounded-full text-sm">
+            Login
+          </Link>
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      {open && (
+        <div className="border-t border-white/5 px-5 py-3 md:hidden">
+          <nav className="flex flex-col gap-1">
+            {navLinks.map(({ href, label }) => (
+              <a
+                key={label}
+                href={href}
+                onClick={() => setOpen(false)}
+                className="mono-label rounded-lg px-2 py-2 text-on-surface-variant transition-colors hover:bg-white/5 hover:text-primary"
+              >
+                {label}
+              </a>
+            ))}
+            <Link href="/auth" onClick={() => setOpen(false)} className="btn-primary mt-2 w-full rounded-full text-sm">
+              Login
+            </Link>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

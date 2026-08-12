@@ -1,1 +1,237 @@
 @import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * PulseMail — "Obsidian Flux"
+ * Ultra-dark, high-contrast, monochromatic (ink-on-void).
+ * Hierarchy comes from scale, weight, and translucency — not hue.
+ * ------------------------------------------------------------------ */
+
+@theme {
+  /* Surfaces */
+  --color-surface: #131313;
+  --color-surface-dim: #131313;
+  --color-surface-bright: #3a3939;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-surface-variant: #353534;
+
+  /* Foreground */
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #c4c7c8;
+  --color-outline: #8e9192;
+  --color-outline-variant: #444748;
+
+  /* Primary = pure white (inverted actions) */
+  --color-primary: #ffffff;
+  --color-on-primary: #1a1c1c;
+  --color-primary-fixed: #e2e2e2;
+  --color-primary-fixed-dim: #c6c6c7;
+  --color-secondary: #c8c6c5;
+
+  --color-background: #131313;
+  --color-on-background: #e5e2e1;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "JetBrains Mono", monospace;
+
+  /* Radii */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Spacing scale from the design system */
+  --spacing-gutter: 24px;
+  --spacing-stack-sm: 16px;
+  --spacing-stack-md: 32px;
+  --spacing-stack-xl: 80px;
+  --spacing-margin-mobile: 20px;
+  --spacing-margin-desktop: 64px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0a0a0a;
+  color: #e5e2e1;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Global ambient background: the "void" with a faint technical dot-grid. */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: #0a0a0a;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Dark theme scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #131313;
+}
+::-webkit-scrollbar-thumb {
+  background: #353534;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444748;
+}
+
+@layer components {
+  /* Glass surfaces — translucency + backdrop blur, hairline white border. */
+  .glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+  }
+
+  /* 1px structural rules (the "hard" counterpoint to rounded glass). */
+  .structural-line {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Primary action: white fill, near-black text. Set radius in markup. */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #ffffff;
+    color: #131313;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.65rem 1.5rem;
+    transition: background-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease, opacity 0.2s ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #c6c6c7;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+  }
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* Secondary: transparent, white hairline border. */
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: #ffffff;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.65rem 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  .btn-outline:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* Ghost: text only. */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: #c4c7c8;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.5rem 0.9rem;
+    transition: color 0.2s ease;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: #ffffff;
+  }
+
+  /* Enclosed input on glass. */
+  .glass-input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    color: #e5e2e1;
+    outline: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+  .glass-input:focus {
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Underlined input variant (composer fields). */
+  .line-input {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 0;
+    color: #e5e2e1;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  .line-input::placeholder {
+    color: #444748;
+  }
+  .line-input:focus {
+    border-color: #ffffff;
+  }
+
+  /* Mono utility label — technical metadata / eyebrows. */
+  .mono-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}

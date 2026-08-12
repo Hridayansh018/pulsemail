@@ -1,5 +1,12 @@
 "use client";
-import supabase from "@/utils/supabase";
+import {
+  KEYS,
+  getSessionUserId,
+  readCollection,
+  writeCollection,
+  uid,
+  nowISO,
+} from "@/utils/localBackend";
 
 export type CampaignRow = {
   id: string;
@@ -13,12 +20,6 @@ export type CampaignRow = {
   created_at: string;
 };
 
-async function getSessionUserId(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  return data.user?.id ?? null;
-}
-
 export async function logCampaign(input: {
   connection_id: string;
   connection_name: string;
@@ -27,45 +28,39 @@ export async function logCampaign(input: {
   subject?: string[];
   message?: string[];
 }): Promise<CampaignRow> {
-  const userId = await getSessionUserId();
+  const userId = getSessionUserId();
   if (!userId) throw new Error("Not authenticated.");
 
-  const { data, error } = await supabase
-    .from("campaigns")
-    .insert({
-      user_id: userId,
-      connection_id: input.connection_id,
-      connection_name: input.connection_name,
-      campaign_name: input.campaign_name,
-      email_list: input.email_list,
-      subject: input.subject,
-      message: input.message,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as CampaignRow;
+  const all = readCollection<CampaignRow>(KEYS.CAMPAIGNS);
+  const row: CampaignRow = {
+    id: uid(),
+    user_id: userId,
+    connection_id: input.connection_id,
+    connection_name: input.connection_name,
+    campaign_name: input.campaign_name,
+    email_list: input.email_list,
+    subject: input.subject ?? [],
+    message: input.message ?? [],
+    created_at: nowISO(),
+  };
+  all.push(row);
+  writeCollection(KEYS.CAMPAIGNS, all);
+  return row;
 }
 
 export async function fetchCampaigns(): Promise<CampaignRow[]> {
-  const userId = await getSessionUserId();
+  const userId = getSessionUserId();
   if (!userId) return [];
-
-  const { data, error } = await supabase
-    .from("campaigns")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as CampaignRow[];
+  return readCollection<CampaignRow>(KEYS.CAMPAIGNS)
+    .filter((c) => c.user_id === userId)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
 export async function deleteCampaign(id: string): Promise<void> {
-  const userId = await getSessionUserId();
+  const userId = getSessionUserId();
   if (!userId) throw new Error("Not authenticated.");
-  
-  const { error } = await supabase.from("campaigns").delete().eq("id", id);
-  if (error) throw error;
+  const remaining = readCollection<CampaignRow>(KEYS.CAMPAIGNS).filter(
+    (c) => !(c.id === id && c.user_id === userId)
+  );
+  writeCollection(KEYS.CAMPAIGNS, remaining);
 }

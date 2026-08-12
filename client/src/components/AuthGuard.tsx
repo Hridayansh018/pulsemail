@@ -1,9 +1,7 @@
 "use client";
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-
-import type { User } from '@supabase/supabase-js';
-import supabase from '@/utils/supabase';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSessionUser, onAuthChange, type LocalUser } from "@/utils/localBackend";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -11,51 +9,36 @@ interface AuthGuardProps {
 }
 
 export default function AuthGuard({ children, fallback }: AuthGuardProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Check current session
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        router.replace('/auth'); // Redirect to login
+    const sync = () => {
+      const current = getSessionUser();
+      if (!current) {
+        setUser(null);
+        router.replace("/auth");
         return;
       }
-      
-      setUser(session.user);
+      setUser(current);
       setLoading(false);
     };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        router.replace('/auth');
-        return;
-      }
-      
-      setUser(session.user);
-      setLoading(false);
-    });
+    sync();
+    const unsubscribe = onAuthChange(sync);
+    return () => unsubscribe();
+  }, [router]);
 
-    checkAuth();
-
-    return () => subscription.unsubscribe();
-  }, [router, supabase]);
-
-  // Show loading spinner while checking auth
   if (loading) {
     return (
       fallback || (
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/15 border-t-accent-400"></div>
         </div>
       )
     );
   }
 
-  // Show children only if user is authenticated
   return user ? <>{children}</> : null;
 }

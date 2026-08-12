@@ -1,6 +1,13 @@
 "use client";
 
-import supabase from "@/utils/supabase";
+import {
+  KEYS,
+  getSessionUserId as sessionUserId,
+  readCollection,
+  writeCollection,
+  uid,
+  nowISO,
+} from "@/utils/localBackend";
 
 export type Connection = {
   id: string;
@@ -12,21 +19,15 @@ export type Connection = {
 };
 
 export async function getSessionUserId(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  return data.user?.id ?? null;
+  return sessionUserId();
 }
 
 export async function fetchConnections(): Promise<Connection[]> {
-  const userId = await getSessionUserId();
+  const userId = sessionUserId();
   if (!userId) return [];
-  const { data, error } = await supabase
-    .from("connections")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return readCollection<Connection>(KEYS.CONNECTIONS)
+    .filter((c) => c.user_id === userId)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
 export async function createConnection(input: {
@@ -34,30 +35,31 @@ export async function createConnection(input: {
   host_email: string;
   host_app_password: string;
 }): Promise<Connection> {
-  const userId = await getSessionUserId();
+  const userId = sessionUserId();
   if (!userId) throw new Error("Not authenticated.");
   if (!input.connection_name.trim()) throw new Error("Connection name is required.");
   if (!input.host_email.trim()) throw new Error("Host email is required.");
   if (!input.host_app_password.trim()) throw new Error("App password is required.");
 
-  const { data, error } = await supabase
-    .from("connections")
-    .insert({
-      user_id: userId,
-      connection_name: input.connection_name.trim(),
-      host_email: input.host_email.trim(),
-      host_app_password: input.host_app_password.trim(),
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Connection;
+  const all = readCollection<Connection>(KEYS.CONNECTIONS);
+  const connection: Connection = {
+    id: uid(),
+    user_id: userId,
+    connection_name: input.connection_name.trim(),
+    host_email: input.host_email.trim(),
+    host_app_password: input.host_app_password.trim(),
+    created_at: nowISO(),
+  };
+  all.push(connection);
+  writeCollection(KEYS.CONNECTIONS, all);
+  return connection;
 }
 
 export async function deleteConnection(id: string): Promise<void> {
-  const userId = await getSessionUserId();
+  const userId = sessionUserId();
   if (!userId) throw new Error("Not authenticated.");
-  const { error } = await supabase.from("connections").delete().eq("id", id);
-  if (error) throw error;
+  const remaining = readCollection<Connection>(KEYS.CONNECTIONS).filter(
+    (c) => !(c.id === id && c.user_id === userId)
+  );
+  writeCollection(KEYS.CONNECTIONS, remaining);
 }

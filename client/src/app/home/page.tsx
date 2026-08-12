@@ -3,6 +3,14 @@ import Nav from "@/components/Nav";
 import toast, { Toaster } from 'react-hot-toast';
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
+  MdOutlineCloudUpload,
+  MdSend,
+  MdOutlineVisibility,
+  MdAdd,
+  MdKeyboardArrowDown,
+  MdClose,
+} from "react-icons/md";
+import {
   fetchConnections,
   createConnection as apiCreateConnection,
   Connection,
@@ -77,14 +85,14 @@ export default function Page() {
   async function handleCSV(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     try {
       const text = await file.text();
       const parsed = parseCSV(text);
       setHeaders(parsed.headers);
       setRows(parsed.rows);
-      setSelectedCol(parsed.headers[0] ? String(parsed.headers[0]) : ""); // Fixed
-      
+      setSelectedCol(parsed.headers[0] ? String(parsed.headers[0]) : "");
+
       toast.success(`CSV uploaded successfully! Found ${parsed.rows.length} rows.`);
     } catch (error: any) {
       toast.error("Failed to parse CSV file. Please check the format.");
@@ -101,11 +109,12 @@ export default function Page() {
       return;
     }
 
-    const url = "https://pulsemail-0uhy.onrender.com/api/send-mails/";
+    // Emails are sent by the same-origin Next.js API route (nodemailer).
+    const url = "/api/send-mails";
 
     try {
       setCampaignPending(true);
-      
+
       // Show loading toast
       const loadingToast = toast.loading("Sending emails...");
 
@@ -144,9 +153,20 @@ export default function Page() {
       if (subjectArray) payload.subject = subjectArray;
       if (messageArray) payload.message = messageArray;
 
-      const result = await sendCampaign(url, payload, { timeoutMs: 20000 });
+      // Attempt to send via the nodemailer API route. A hard failure here
+      // (network/500) is non-fatal: the campaign is still recorded in local
+      // history. Per-recipient failures come back in the 200 response body.
+      let sendFailed = false;
+      let sendResult: any = null;
+      try {
+        sendResult = await sendCampaign(url, payload, { timeoutMs: 20000 });
+        console.log("Campaign response:", sendResult);
+      } catch (sendErr: any) {
+        sendFailed = true;
+        console.error("Email send failed:", sendErr?.message || sendErr);
+      }
 
-      // Log the campaign to database (don't block UI if this fails)
+      // Record the campaign in local history regardless of send outcome.
       try {
         const logPayload: Parameters<typeof logCampaign>[0] = {
           connection_id: selectedConnection.id,
@@ -161,14 +181,28 @@ export default function Page() {
         await logCampaign(logPayload);
       } catch (logErr: any) {
         console.error("Failed to log campaign:", logErr?.message || logErr);
-        toast.error("Campaign sent but failed to save to history.");
+        toast.error("Failed to save campaign to history.");
       }
 
-      console.log("Campaign response:", result);
-      
-      // Dismiss loading toast and show success
+      // Dismiss loading toast and report the true outcome.
       toast.dismiss(loadingToast);
-      toast.success(`Campaign sent successfully to ${emailList.length} recipients!`);
+      if (sendFailed) {
+        toast(
+          `Saved to history for ${emailList.length} recipients. The email service errored — no emails were sent.`
+        );
+      } else if (sendResult && typeof sendResult === "object" && sendResult.failed > 0) {
+        if (sendResult.sent > 0) {
+          toast(
+            `Sent ${sendResult.sent} of ${sendResult.total}. ${sendResult.failed} failed — check the connection credentials.`
+          );
+        } else {
+          toast.error(
+            `All ${sendResult.total} emails failed to send. Check the connection's email and app password.`
+          );
+        }
+      } else {
+        toast.success(`Campaign sent successfully to ${emailList.length} recipients!`);
+      }
 
       // Clear inputs
       setSubject('');
@@ -196,13 +230,13 @@ export default function Page() {
     try {
       setConnPending(true);
       setConnNotice(null);
-      
+
       const newConn = await apiCreateConnection({
         connection_name: connName,
         host_email: connEmail,
         host_app_password: connAppPass,
       });
-      
+
       // Refresh list and select newly created
       const list = await fetchConnections();
       setConnections(list);
@@ -211,10 +245,10 @@ export default function Page() {
       setConnName("");
       setConnEmail("");
       setConnAppPass("");
-      
+
       // Success toast
       toast.success("Connection created successfully!");
-      
+
     } catch (e: any) {
       setConnNotice(e?.message || "Failed to create connection.");
       toast.error(e?.message || "Failed to create connection.");
@@ -223,327 +257,312 @@ export default function Page() {
     }
   }
 
+  const launchDisabled = campaignPending || !selectedConnection || emailList.length === 0;
+
   return (
-
     <AuthGuard>
-    <section className="relative min-h-screen w-full overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(1200px_600px_at_15%_20%,rgba(120,98,255,0.35),transparent_40%),radial-gradient(900px_600px_at_80%_70%,rgba(28,49,220,0.55),transparent_45%),linear-gradient(180deg,rgba(10,15,25,0.85),rgba(10,15,25,0.9))]" />
-        <div className="pointer-events-none absolute inset-0 opacity-30 mix-blend-overlay [background:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:3px_3px]" />
-      </div>
-
       <Nav />
 
-      {/* Content */}
-      <div className="relative pt-20 z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 gap-6 px-4 py-10 md:grid-cols-2">
-        {/* LEFT: CSV */}
-        <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
-          <h2 className="text-lg font-semibold text-white">Upload CSV</h2>
-          <p className="mb-3 text-sm text-white/70">
-            Upload a CSV with headers. After upload, pick the column that contains emails.
-          </p>
-
-          <label className="mb-4 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white hover:bg-white/15">
-            <input 
-              ref={fileRef}
-              type="file" 
-              accept=".csv,text/csv" 
-              onChange={handleCSV} 
-              className="hidden" 
-            />
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
-              <path d="M12 16V4m0 0 4 4M12 4 8 8" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-            Choose CSV
-          </label>
-
-          {headers.length > 0 && (
-            <div className="mb-4 space-y-4">
-              <div>
-                <label className="mb-1 block text-sm text-white/80">Select email column</label>
-                <SelectShell>
-                  <select
-                    value={selectedCol ?? ""}
-                    onChange={(e) => setSelectedCol(e.target.value)}
-                    className="
-                      w-full appearance-none bg-transparent
-                      px-3 pr-9 py-2
-                      text-white placeholder:text-white/60
-                      outline-none
-                    "
-                  >
-                    {headers.map((h) => {
-                      const val = String(h);
-                      return (
-                        <option className="bg-[#0b0f19]" key={val} value={val}>
-                          {val}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </SelectShell>
-                <p className="mt-2 text-xs text-white/60">Selected list size: {emailList.length}</p>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm text-white/80">Select subject column (optional)</label>
-                <SelectShell>
-                  <select
-                    value={selectedSubjectCol ?? ""}
-                    onChange={(e) => setSelectedSubjectCol(e.target.value)}
-                    className="
-                      w-full appearance-none bg-transparent
-                      px-3 pr-9 py-2
-                      text-white placeholder:text-white/60
-                      outline-none
-                    "
-                  >
-                    <option className="bg-[#0b0f19]" value="">
-                      None (use input field)
-                    </option>
-                    {headers.map((h) => {
-                      const val = String(h);
-                      return (
-                        <option className="bg-[#0b0f19]" key={val} value={val}>
-                          {val}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </SelectShell>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm text-white/80">Select message column (optional)</label>
-                <SelectShell>
-                  <select
-                    value={selectedMessageCol ?? ""}
-                    onChange={(e) => setSelectedMessageCol(e.target.value)}
-                    className="
-                      w-full appearance-none bg-transparent
-                      px-3 pr-9 py-2
-                      text-white placeholder:text-white/60
-                      outline-none
-                    "
-                  >
-                    <option className="bg-[#0b0f19]" value="">
-                      None (use input field)
-                    </option>
-                    {headers.map((h) => {
-                      const val = String(h);
-                      return (
-                        <option className="bg-[#0b0f19]" key={val} value={val}>
-                          {val}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </SelectShell>
-              </div>
-            </div>
-          )}
-
-          {rows.length > 0 ? (
-            <div className="mt-4 max-h-[420px] overflow-auto rounded-lg border border-white/10">
-              <table className="min-w-full text-left text-sm text-white/90">
-                <thead className="sticky top-0 bg-white/10 backdrop-blur">
-                  <tr>
-                    {headers.map((h) => (
-                      <th key={h} className="px-3 py-2 font-medium">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {rows.map((r, idx) => (
-                    <tr key={idx} className="hover:bg-white/5">
-                      {headers.map((h) => (
-                        <td key={h} className="px-3 py-2 text-white/80">
-                          {r[h]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <EmptyState />
-          )}
+      <main className="mx-auto w-full max-w-[1280px] flex-grow px-5 pb-28 pt-24 md:px-16 md:pb-16">
+        {/* Header */}
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-primary md:text-5xl">New Campaign</h1>
+            <p className="mt-2 text-on-surface-variant">Configure recipients and craft your message.</p>
+          </div>
+          <button
+            onClick={handleCreateCampaign}
+            disabled={launchDisabled}
+            className="btn-primary hidden rounded-full text-sm md:inline-flex"
+          >
+            <MdSend className="h-[18px] w-[18px]" />
+            Launch Campaign
+          </button>
         </div>
 
-        {/* RIGHT: Campaign + Connection */}
-        <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
-          <h2 className="text-lg font-semibold text-white">Create Campaign</h2>
-          <p className="mb-4 text-sm text-white/70">Compose the email to send to the selected list.</p>
-
-          {/* Campaign Name */}
-          <div className="mb-4">
-            <label className="mb-1 block text-sm text-white/80">Campaign name</label>
-            <input
-              value={campaignName}
-              onChange={(e) => setCampaignName(e.target.value)}
-              placeholder="e.g., August Newsletter"
-              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
-            />
-          </div>
-
-          {/* Connection select */}
-          <div className="mb-4">
-            <label className="mb-1 block text-sm text-white/80">Connection</label>
-            <SelectShell>
-              <select
-                value={selectedConnectionId}
-                onChange={(e) => {
-                  if (e.target.value === "__create__") {
-                    setModalOpen(true);
-                    return;
-                  }
-                  setSelectedConnectionId(e.target.value);
-                }}
-                className="
-                  w-full appearance-none bg-transparent
-                  px-3 pr-9 py-2
-                  text-white placeholder:text-white/60
-                  outline-none
-                "
-              >
-                {connections.length === 0 && (
-                  <option className="bg-[#0b0f19]" value="">
-                    No connections
-                  </option>
-                )}
-                {connections.map((c) => (
-                  <option className="bg-[#0b0f19]" key={c.id} value={c.id}>
-                    {c.connection_name}
-                  </option>
-                ))}
-                <option className="bg-[#0b0f19]" value="__create__">
-                  + Create connection
-                </option>
-              </select>
-            </SelectShell>
-          </div>
-
-          {/* Subject / Message */}
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm text-white/80">Subject</label>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* LEFT: Recipients */}
+          <div className="flex flex-col gap-4 lg:col-span-5">
+            {/* Dropzone */}
+            <label className="glass-panel group flex min-h-[200px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-outline-variant p-6 text-center transition-colors hover:border-primary">
               <input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Your subject"
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleCSV}
+                className="hidden"
               />
-            </div>
+              <MdOutlineCloudUpload className="mb-4 h-10 w-10 text-on-surface-variant transition-colors group-hover:text-primary" />
+              <h3 className="mb-2 text-xl font-semibold tracking-tight text-primary">Upload Recipients</h3>
+              <p className="mb-4 text-on-surface-variant">Click to browse for your CSV file.</p>
+              <span className="mono-label text-outline-variant">Requires a column of email addresses</span>
+            </label>
 
-            <div>
-              <label className="mb-1 block text-sm text-white/80">Message</label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Write your message..."
-                rows={10}
-                className="w-full resize-y rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
-              />
-            </div>
-
-            <button
-              onClick={handleCreateCampaign}
-              disabled={
-                campaignPending || 
-                !selectedConnection || 
-                emailList.length === 0
-              }
-              className="w-full rounded-lg cursor-pointer bg-blue-600/90 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-white/20"
-            >
-              {campaignPending ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
-                  Sending emails...
+            {/* Column mapping */}
+            {headers.length > 0 && (
+              <div className="glass-panel flex flex-col gap-4 rounded-lg p-5">
+                <div>
+                  <label className="mono-label mb-2 block text-on-surface-variant">Email column</label>
+                  <SelectShell>
+                    <select
+                      value={selectedCol ?? ""}
+                      onChange={(e) => setSelectedCol(e.target.value)}
+                      className="w-full appearance-none bg-transparent px-3 py-2 pr-9 text-on-surface outline-none"
+                    >
+                      {headers.map((h) => {
+                        const val = String(h);
+                        return (
+                          <option className="bg-surface" key={val} value={val}>
+                            {val}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </SelectShell>
+                  <p className="mono-label mt-2 text-on-surface-variant">Selected list size: {emailList.length}</p>
                 </div>
-              ) : (
-                "Create Campaign"
-              )}
-            </button>
+
+                <div>
+                  <label className="mono-label mb-2 block text-on-surface-variant">Subject column (optional)</label>
+                  <SelectShell>
+                    <select
+                      value={selectedSubjectCol ?? ""}
+                      onChange={(e) => setSelectedSubjectCol(e.target.value)}
+                      className="w-full appearance-none bg-transparent px-3 py-2 pr-9 text-on-surface outline-none"
+                    >
+                      <option className="bg-surface" value="">None (use field below)</option>
+                      {headers.map((h) => {
+                        const val = String(h);
+                        return (
+                          <option className="bg-surface" key={val} value={val}>
+                            {val}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </SelectShell>
+                </div>
+
+                <div>
+                  <label className="mono-label mb-2 block text-on-surface-variant">Message column (optional)</label>
+                  <SelectShell>
+                    <select
+                      value={selectedMessageCol ?? ""}
+                      onChange={(e) => setSelectedMessageCol(e.target.value)}
+                      className="w-full appearance-none bg-transparent px-3 py-2 pr-9 text-on-surface outline-none"
+                    >
+                      <option className="bg-surface" value="">None (use field below)</option>
+                      {headers.map((h) => {
+                        const val = String(h);
+                        return (
+                          <option className="bg-surface" key={val} value={val}>
+                            {val}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </SelectShell>
+                </div>
+              </div>
+            )}
 
             {/* Preview */}
-            <div className="text-xs text-white/70">
-              {emailList.length > 0 ? (
-                <div>
-                  Sending to {emailList.length} recipients. Using connection:{" "}
-                  <span className="text-white/90">
-                    {selectedConnection ? selectedConnection.connection_name : "N/A"}
-                  </span>
-                  . Example:{" "}
-                  <span className="text-white/90">
-                    {emailList.slice(0, 5).join(", ")}
-                    {emailList.length > 5 ? "…" : ""}
-                  </span>
+            {rows.length > 0 ? (
+              <div className="glass-panel flex flex-col overflow-hidden rounded-lg">
+                <div className="flex items-center justify-between border-b border-white/10 bg-surface-container-low/50 p-4">
+                  <h4 className="mono-label text-primary">Preview ({rows.length} parsed)</h4>
+                  <MdOutlineVisibility className="h-4 w-4 text-on-surface-variant" />
                 </div>
-              ) : (
-                <span>No recipients selected yet.</span>
-              )}
+                <div className="max-h-[420px] overflow-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead className="sticky top-0 bg-surface-container-lowest/80 backdrop-blur">
+                      <tr className="border-b border-white/10">
+                        {headers.map((h) => (
+                          <th key={h} className="mono-label p-3 font-normal text-on-surface-variant">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-sm text-on-surface">
+                      {rows.map((r, idx) => (
+                        <tr key={idx} className="transition-colors hover:bg-surface-variant/40">
+                          {headers.map((h) => (
+                            <td key={h} className="p-3 text-on-surface-variant">
+                              {r[h]}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <EmptyState />
+            )}
+          </div>
+
+          {/* RIGHT: Composer */}
+          <div className="flex flex-col gap-4 lg:col-span-7">
+            <div className="glass-panel flex flex-col gap-6 rounded-lg p-6">
+              {/* Campaign name + connection */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mono-label mb-2 block text-on-surface-variant">Campaign Name</label>
+                  <input
+                    value={campaignName}
+                    onChange={(e) => setCampaignName(e.target.value)}
+                    placeholder="Q3 Product Update"
+                    className="line-input"
+                  />
+                </div>
+                <div>
+                  <label className="mono-label mb-2 block text-on-surface-variant">Sender Connection</label>
+                  <div className="relative">
+                    <select
+                      value={selectedConnectionId}
+                      onChange={(e) => {
+                        if (e.target.value === "__create__") {
+                          setModalOpen(true);
+                          return;
+                        }
+                        setSelectedConnectionId(e.target.value);
+                      }}
+                      className="line-input appearance-none pr-8"
+                    >
+                      {connections.length === 0 && <option className="bg-surface" value="">No connections</option>}
+                      {connections.map((c) => (
+                        <option className="bg-surface" key={c.id} value={c.id}>
+                          {c.connection_name}
+                        </option>
+                      ))}
+                      <option className="bg-surface" value="__create__">+ Create connection</option>
+                    </select>
+                    <MdKeyboardArrowDown className="pointer-events-none absolute right-1 top-1/2 h-5 w-5 -translate-y-1/2 text-on-surface-variant" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="mono-label mb-2 block text-on-surface-variant">Subject Line</label>
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Introducing new features..."
+                  className="line-input text-lg"
+                />
+              </div>
+
+              {/* Message */}
+              <div className="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-surface-container/40">
+                <div className="border-b border-white/10 bg-surface-container-low px-4 py-2">
+                  <span className="mono-label text-on-surface-variant">Message Body</span>
+                </div>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Hi there,&#10;&#10;We wanted to let you know..."
+                  rows={10}
+                  className="min-h-[240px] w-full resize-y bg-transparent p-4 text-on-surface outline-none placeholder:text-outline-variant"
+                />
+              </div>
+
+              {/* Launch + preview */}
+              <div className="flex flex-col gap-4">
+                <button
+                  onClick={handleCreateCampaign}
+                  disabled={launchDisabled}
+                  className="btn-primary w-full rounded-lg py-3 md:w-auto md:self-end"
+                >
+                  {campaignPending ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black/80" />
+                      Sending emails...
+                    </>
+                  ) : (
+                    <>
+                      <MdSend className="h-[18px] w-[18px]" />
+                      Launch Campaign
+                    </>
+                  )}
+                </button>
+
+                <p className="mono-label normal-case leading-relaxed text-on-surface-variant">
+                  {emailList.length > 0 ? (
+                    <>
+                      Sending to {emailList.length} recipients via{" "}
+                      <span className="text-primary">
+                        {selectedConnection ? selectedConnection.connection_name : "N/A"}
+                      </span>
+                      . e.g. {emailList.slice(0, 3).join(", ")}
+                      {emailList.length > 3 ? "…" : ""}
+                    </>
+                  ) : (
+                    <>No recipients selected yet.</>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Create Connection Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setModalOpen(false)} />
-          <div className="relative z-10 w-full max-w-lg rounded-2xl border border-white/20 bg-white/10 p-6 text-white backdrop-blur-md">
-            <h3 className="text-lg font-semibold">Create Connection</h3>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
+          <div className="glass-card relative z-10 w-full max-w-lg p-6 text-on-surface">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-2xl font-semibold tracking-tight text-primary">Create Connection</h3>
+              <button onClick={() => setModalOpen(false)} className="text-on-surface-variant transition-colors hover:text-primary">
+                <MdClose className="h-5 w-5" />
+              </button>
+            </div>
             {connNotice && (
-              <div className="mt-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm">
+              <div className="mb-3 rounded-lg border border-white/15 bg-white/[0.06] px-3 py-2 text-sm">
                 {connNotice}
               </div>
             )}
-            <div className="mt-4 space-y-3">
+            <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-1 block text-sm text-white/80">Connection name</label>
+                <label className="mono-label mb-2 block text-on-surface-variant">Connection name</label>
                 <input
                   value={connName}
                   onChange={(e) => setConnName(e.target.value)}
-                  placeholder="e.g., Primary Gmail"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
+                  placeholder="Primary Gmail"
+                  className="glass-input"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-white/80">Host email</label>
+                <label className="mono-label mb-2 block text-on-surface-variant">Host email</label>
                 <input
                   value={connEmail}
                   onChange={(e) => setConnEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
+                  className="glass-input"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-white/80">Host app password</label>
+                <label className="mono-label mb-2 block text-on-surface-variant">Host app password</label>
                 <input
                   value={connAppPass}
                   onChange={(e) => setConnAppPass(e.target.value)}
                   placeholder="App password"
                   type="password"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none"
+                  className="glass-input"
                 />
               </div>
             </div>
-            <div className="mt-5 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
-              >
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button onClick={() => setModalOpen(false)} className="btn-outline rounded-lg text-sm">
                 Cancel
               </button>
               <button
                 disabled={connPending || !connName.trim() || !connEmail.trim() || !connAppPass.trim()}
                 onClick={handleCreateConnection}
-                className="rounded-lg bg-blue-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
+                className="btn-primary rounded-lg text-sm"
               >
                 {connPending ? "Creating..." : "Create"}
               </button>
@@ -558,27 +577,18 @@ export default function Page() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(10px)',
-            color: '#fff',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: '12px',
+            background: 'rgba(20, 20, 20, 0.9)',
+            backdropFilter: 'blur(12px)',
+            color: '#e5e2e1',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '10px',
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontSize: '13px',
           },
-          success: {
-            iconTheme: {
-              primary: '#10B981',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#EF4444',
-              secondary: '#fff',
-            },
-          },
+          success: { iconTheme: { primary: '#ffffff', secondary: '#131313' } },
+          error: { iconTheme: { primary: '#ffb4ab', secondary: '#131313' } },
         }}
       />
-    </section>
     </AuthGuard>
   );
 }
@@ -587,8 +597,8 @@ export default function Page() {
 async function sendCampaign(url: string, payload: CampaignPayload, opts: SendOptions = {}) {
   const { timeoutMs = 15000, signal } = opts;
 
-  if (!/^https?:\/\//.test(url)) {
-    throw new Error("Invalid URL. Must start with http(s)://");
+  if (!/^(https?:\/\/|\/)/.test(url)) {
+    throw new Error("Invalid URL. Must be an absolute http(s) URL or an app-relative path.");
   }
   if (!Array.isArray(payload.email_list) || payload.email_list.length === 0) {
     throw new Error("email_list must be a non-empty array.");
@@ -708,41 +718,18 @@ function parseCSV(input: string): { headers: string[]; rows: Row[] } {
 /* ------------ UI Helpers ------------- */
 function EmptyState() {
   return (
-    <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-6 text-center">
-      <p className="text-sm text-white/70">No file uploaded. Choose a CSV to preview data.</p>
-      <p className="mt-2 text-xs text-white/50">Example headers: email, name, company</p>
+    <div className="glass-panel rounded-lg p-6 text-center">
+      <p className="text-sm text-on-surface-variant">No file uploaded. Choose a CSV to preview data.</p>
+      <p className="mono-label mt-2 text-outline-variant">Example headers: email, name, subject, message</p>
     </div>
   );
 }
 
-function SelectShell({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function SelectShell({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className={[
-        "relative flex items-center",
-        "rounded-md border border-white/15",
-        "bg-gradient-to-br from-white/5 to-white/10",
-        "backdrop-blur-md",
-        className,
-      ].join(" ")}
-    >
+    <div className="relative flex items-center rounded-lg border border-white/10 bg-transparent transition-colors focus-within:border-white">
       {children}
-      {/* Minimal caret */}
-      <div className="pointer-events-none absolute right-3 flex h-5 w-5 items-center justify-center text-white/75">
-        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-          <path
-            fillRule="evenodd"
-            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </div>
+      <MdKeyboardArrowDown className="pointer-events-none absolute right-2 h-5 w-5 text-on-surface-variant" />
     </div>
   );
 }

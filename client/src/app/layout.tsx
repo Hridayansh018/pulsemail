@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -7,14 +7,14 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "PulseMail",
-  description: "Created by WarpX",
+  title: "PulseMail — Precision Email Delivery",
+  description: "High-performance bulk email delivery. CSV import, connection management, and full campaign history — engineered for scale.",
 };
 
 export default function RootLayout({
@@ -28,8 +28,9 @@ export default function RootLayout({
         <link rel="icon" href="/pulsemail-logo-1.png" type="image/png" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
+        <div className="app-bg" aria-hidden="true" />
         {children}
       </body>
     </html>

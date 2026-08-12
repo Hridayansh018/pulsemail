@@ -1,59 +1,33 @@
-import Link from "next/link";
-import { FaXTwitter,FaInstagram   } from "react-icons/fa6";
-import { FaLinkedin  } from "react-icons/fa";
+import { FaXTwitter, FaInstagram } from "react-icons/fa6";
+import { FaLinkedin } from "react-icons/fa";
 
+const socials = [
+  { href: "https://x.com/hridayansh018", icon: FaXTwitter, label: "X (Twitter)" },
+  { href: "https://www.linkedin.com/in/hridayansh-awasthi-0095a12b6", icon: FaLinkedin, label: "LinkedIn" },
+  { href: "https://www.instagram.com/__hridayansh/", icon: FaInstagram, label: "Instagram" },
+];
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-white py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8">
-          {/* Logo & Description */}
-          <div className="md:col-span-2">
-            <div className="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
-              PulseMail
-            </div>
-            <p className="text-gray-400 mb-6 max-w-md">
-              Send bulk emails effortlessly with our secure, fast, and reliable platform. Perfect for businesses of all sizes.
-            </p>
-            <div className="flex space-x-4">
-              <a href="https://x.com/hridayansh018" className="text-gray-400 hover:text-white transition-colors">
-                <FaXTwitter />
-              </a>
-              <a href="https://www.linkedin.com/in/hridayansh-awasthi-0095a12b6" className="text-gray-400 hover:text-white transition-colors">
-                <FaLinkedin />
-              </a>
-              <a href="https://www.instagram.com/__hridayansh/" className="text-gray-400 hover:text-white transition-colors">
-                <FaInstagram />
-              </a>
-            </div>
-          </div>
+    <footer className="mt-auto w-full border-t border-white/5 bg-surface-container-lowest">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-between gap-4 px-5 py-8 md:flex-row md:px-16">
+        <span className="mono-label font-bold normal-case text-primary">
+          © 2024 PulseMail. Precision Engineering.
+        </span>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2">
-              <li><Link href="#about" className="text-gray-400 hover:text-white transition-colors">About</Link></li>
-              <li><Link href="#contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
-              <li><Link href="/auth" className="text-gray-400 hover:text-white transition-colors">Get Started</Link></li>
-              {/* <li><Link href="/history" className="text-gray-400 hover:text-white transition-colors">History</Link></li> */}
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            {/* <h4 className="text-lg font-semibold mb-4">Support</h4> */}
-            <ul className="space-y-2">
-              {/* <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Help Center</a></li> */}
-              {/* <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li> */}
-              {/* <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li> */}
-              {/* <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Status</a></li> */}
-            </ul>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-800 pt-8 mt-8 text-center text-gray-400">
-          <p>&copy; 2025 PulseMail. All rights reserved. Built with ❤️ for modern businesses.</p>
+        <div className="flex items-center gap-4">
+          {socials.map(({ href, icon: Icon, label }) => (
+            <a
+              key={label}
+              href={href}
+              aria-label={label}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-on-surface-variant transition-colors hover:text-primary"
+            >
+              <Icon className="h-4 w-4" />
+            </a>
+          ))}
         </div>
       </div>
     </footer>
